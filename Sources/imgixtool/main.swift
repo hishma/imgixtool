@@ -51,10 +51,18 @@ let parser = ArgumentParser(usage: "<options>", overview: "This is what this too
 let widthArg: OptionArgument<Int> = parser.add(option: "--width", shortName: "-w", kind: Int.self, usage: "Width")
 let fileArg: PositionalArgument<PathArgument> = parser.add(positional: "file", kind: PathArgument.self, optional: false, usage: "Path to the image file", completion: .filename)
 let srcset: OptionArgument<Bool> = parser.add(option: "--srcset", shortName: "-s", kind: Bool.self, usage: "Include the `srcset` attribute.")
+let imgixSourceArg: OptionArgument<String> = parser.add(option: "--imgix-source", shortName: "-i", kind: String.self, usage: "URL of the imgix source directory. Persisted.")
 
 func processArguments(arguments: ArgumentParser.Result) throws -> ImgElement {
     
-    guard let sourceUrl = URL(string: "https://svbeowulf.imgix.net") else { fatalError() }
+    // If a valid url was provided for --imgix-source, persist it in user defauts.
+    if let newImgixSource = arguments.get(imgixSourceArg), let newImgixSourceUrl = URL(string: newImgixSource) {
+        UserDefaults.standard.set(newImgixSourceUrl.absoluteString, forKey: "imgixSource")
+    }
+    
+    guard let imgixSource = UserDefaults.standard.object(forKey: "imgixSource") as? String, let sourceUrl = URL(string: imgixSource)  else {
+        throw ArgumentParserError.expectedValue(option: "--imgix-source")
+    }
 
     guard let path = arguments.get(fileArg)?.path.asString else {
         throw ArgumentParserError.invalidValue(argument: "file", error: ArgumentConversionError.custom("Invalid file path."))
@@ -75,7 +83,6 @@ do {
     if let element = imgTag.element {
         print(element)
     }
-    
 }
 catch let error as ArgumentParserError {
     print(error.description)
